@@ -112,7 +112,7 @@ struct CloudView: View {
     }
     
     func showDeleteConfirmation() {
-        getNameAlert(title: "Confirmar Exclusão", message: "Isso não pode ser desfeito.") { _ in
+        getNameAlert(title: "Confirmar Exclusão", message: " Isso não pode ser desfeito.") { _ in
             deleteAllRecords()
         }
     }
@@ -123,7 +123,6 @@ struct CloudView: View {
         
         let predicate = NSPredicate(value: true)
         
-        // Fetch tweets
         let tweetQuery = CKQuery(recordType: "Tweet", predicate: predicate)
         tweetQuery.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         let tweetOperation = CKQueryOperation(query: tweetQuery)
@@ -134,7 +133,6 @@ struct CloudView: View {
                 DispatchQueue.main.async {
                     self.tweets.append(record)
                     
-                    // Fetch user associated with this tweet
                     if let userReference = record["tweeter"] as? CKRecord.Reference {
                         let userID = userReference.recordID.recordName
                         if self.usersByID[userID] == nil {
@@ -165,7 +163,7 @@ struct CloudView: View {
     }
 
     func fetchUser(with recordID: CKRecord.ID) {
-        let userQuery = CKQuery(recordType: "User", predicate: NSPredicate(format: "recordID == %@", recordID))
+        let userQuery = CKQuery(recordType: "TwitterUser", predicate: NSPredicate(format: "recordID == %@", recordID))
         privateDatabase.fetch(withQuery: userQuery, inZoneWith: nil) { result in
             do {
                 let users = try result.get().matchResults
@@ -182,9 +180,9 @@ struct CloudView: View {
         }
     }
 
-    func checkUserBeforeWritingTweet(userName: String) {
-        let predicate = NSPredicate(format: "name == %@", userName)
-        let query = CKQuery(recordType: "User", predicate: predicate)
+    func checkUserBeforeWritingTweet(tweeterName: String) {
+        let predicate = NSPredicate(format: "name == %@", tweeterName)
+        let query = CKQuery(recordType: "TwitterUser", predicate: predicate)
         
         privateDatabase.fetch(withQuery: query, inZoneWith: nil) { result in
             do {
@@ -193,7 +191,7 @@ struct CloudView: View {
                     DispatchQueue.main.async {
                         self.alertTitle = "Erro"
                         self.alertMessage = "Usuário não encontrado."
-                        self.userInput = "" // Limpar o TextField
+                        self.userInput = ""
                         self.showInputField = true
                     }
                     return
@@ -204,14 +202,14 @@ struct CloudView: View {
                     self.alertAction = { tweetText in
                         self.writeTweet(for: user, tweetText: tweetText)
                     }
-                    self.userInput = "" // Limpar o TextField
+                    self.userInput = ""
                     self.showInputField = true
                 }
             } catch {
                 DispatchQueue.main.async {
                     self.alertTitle = "Erro"
                     self.alertMessage = "Usuário não encontrado."
-                    self.userInput = "" // Limpar o TextField
+                    self.userInput = ""
                     self.showInputField = true
                 }
             }
@@ -234,41 +232,37 @@ struct CloudView: View {
         }
     }
     
-    func createNewUser(userName: String) {
-        let predicate = NSPredicate(format: "name == %@", userName)
-        let query = CKQuery(recordType: "User", predicate: predicate)
+    func createNewUser(tweeterName: String) {
+        let predicate = NSPredicate(format: "name == %@", tweeterName)
+        let query = CKQuery(recordType: "TwitterUser", predicate: predicate)
       
         privateDatabase.fetch(withQuery: query, inZoneWith: nil) { result in
             switch result {
             case .success(let (matchResults, _)):
-                // Try to get the first result
                 if let (_, recordResult) = matchResults.first {
                     switch recordResult {
                     case .success(let record):
-                        // Successfully fetched the record, handle it here
                         print("Record fetched: \(record)")
                     case .failure:
-                        // Failed to fetch the record, show error
                         DispatchQueue.main.async {
                             self.alertTitle = "Erro"
                             self.alertMessage = "Usuário já existe."
-                            self.userInput = "" // Limpar o TextField
+                            self.userInput = ""
                             self.showInputField = true
                         }
                     }
                 }
             case .failure(let error):
-                // Handle error
                 DispatchQueue.main.async {
                     self.alertTitle = "Erro"
                     self.alertMessage = "Ocorreu um erro: \(error.localizedDescription)"
-                    self.userInput = "" // Limpar o TextField
+                    self.userInput = ""
                     self.showInputField = true
                 }
             }
         }
-            let user = CKRecord(recordType: "User")
-            user["name"] = userName
+            let user = CKRecord(recordType: "TwitterUser")
+            user["name"] = tweeterName
             
             self.privateDatabase.save(user) { _, error in
                 if let error = error {
